@@ -1,0 +1,947 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIIA Clinical Intelligence Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .page { transition: opacity 0.3s ease; }
+        .sidebar-link.active { background-color: #059669; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-900">
+
+    <div class="fixed left-0 top-0 h-full w-64 bg-emerald-900 text-white p-5 space-y-8 z-50">
+        <div class="text-2xl font-bold flex items-center gap-3 px-2">
+            <i class="fas fa-leaf text-emerald-400"></i> <span>AIIA CTMS</span>
+        </div>
+        <div class="text-xs text-emerald-300 font-semibold uppercase tracking-wider px-2">Navigation</div>
+        <nav class="space-y-1">
+            <a href="#" onclick="showPage('overview')" class="sidebar-link active flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-overview"><i class="fas fa-chart-line"></i> Overview</a>
+            <a href="#" onclick="showPage('trials')" class="sidebar-link flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-trials"><i class="fas fa-flask"></i> Trial Management</a>
+            <a href="#" onclick="showPage('participants')" class="sidebar-link flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-participants"><i class="fas fa-user-group"></i> Participants</a>
+            <a href="#" onclick="showPage('safety')" class="sidebar-link flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-safety"><i class="fas fa-shield-virus text-red-400"></i> Pharmacovigilance</a>
+            <a href="#" onclick="showPage('ai')" class="sidebar-link flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-ai"><i class="fas fa-brain text-purple-400"></i> AI Analyzer</a>
+            <a href="#" onclick="showPage('matching')" class="sidebar-link flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-800 transition" id="link-matching"><i class="fas fa-user-check text-blue-400"></i> Patient Matcher</a>
+            <div class="pt-4 border-t border-emerald-800 mt-4">
+                <a href="#" onclick="exportFHIR()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-800 transition text-emerald-200"><i class="fas fa-file-export"></i> CDISC/FHIR Export</a>
+            </div>
+        </nav>
+        <div class="absolute bottom-5 left-5 text-[10px] text-emerald-400 px-2 uppercase tracking-widest">
+            GCP Compliant | NDCT 2019
+        </div>
+    </div>
+
+    <div class="ml-64 p-10">
+
+        <div id="page-overview" class="page space-y-8">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h1 class="text-4xl font-black text-slate-800">Ayurveda Research Overview</h1>
+                    <p class="text-slate-500 mt-1">Real-time monitoring of clinical trial milestones</p>
+                </div>
+                <div class="bg-white px-4 py-2 shadow-sm rounded-full border text-sm font-semibold text-slate-600">Role: Principal Investigator</div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="p-6 bg-white shadow-sm rounded-3xl border-l-8 border-emerald-500 hover:shadow-md transition">
+                    <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">Active Trials</p>
+                    <p id="stat-trials" class="text-4xl font-black text-slate-800">...</p>
+                </div>
+                <div class="p-6 bg-white shadow-sm rounded-3xl border-l-8 border-blue-500 hover:shadow-md transition">
+                    <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">Enrollment Rate</p>
+                    <p id="stat-enrollment" class="text-4xl font-black text-slate-800">...%</p>
+                </div>
+                <div class="p-6 bg-white shadow-sm rounded-3xl border-l-8 border-red-500 hover:shadow-md transition">
+                    <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">Adverse Events</p>
+                    <p id="stat-safety" class="text-4xl font-black text-slate-800">...</p>
+                </div>
+                <div class="p-6 bg-white shadow-sm rounded-3xl border-l-8 border-purple-500 hover:shadow-md transition">
+                    <p class="text-slate-400 text-xs uppercase font-bold tracking-wider">AI Risk Score</p>
+                    <p id="stat-risk" class="text-4xl font-black text-orange-600">...</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-8 shadow-sm rounded-3xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">Enrollment Progress</h3>
+                        <i class="fas fa-chart-bar text-slate-300"></i>
+                    </div>
+                    <div class="h-80"><canvas id="trialChart"></canvas></div>
+                </div>
+                <div class="bg-gradient-to-br from-orange-50 to-white p-8 shadow-sm rounded-3xl border border-orange-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-orange-800"><i class="fas fa-robot mr-2"></i>AI Intelligence Insight</h3>
+                        <span id="ai-status-badge" class="text-[10px] px-2 py-1 rounded-full bg-slate-200 text-slate-500">Checking...</span>
+                    </div>
+                    <div id="ai-insight-container" class="space-y-4">
+                        <p id="ai-insight" class="text-slate-700 italic leading-relaxed">Initializing Gemma 4 connection...</p>
+                        <div id="ai-summary-box" class="hidden p-4 bg-white border border-orange-200 rounded-2xl text-sm text-slate-600 shadow-sm">
+                            <strong class="block mb-1 text-orange-800 font-bold uppercase text-[10px]">Clinical Summary</strong>
+                            <span id="ai-summary-text"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-trials" class="page hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold">Trial Management</h1>
+                <button onclick="openNewTrialForm()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700">+ New Trial</button>
+            </div>
+            <div id="new-trial-form" class="hidden bg-white p-6 shadow rounded-3xl space-y-4 border-2 border-emerald-100">
+                <h3 class="font-bold text-slate-700">New Trial</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input id="nt-title" placeholder="Trial title" class="p-3 border rounded-xl">
+                    <input id="nt-ctri" placeholder="CTRI ID (or leave blank)" class="p-3 border rounded-xl">
+                    <select id="nt-status" class="p-3 border rounded-xl">
+                        <option>Ethics Review</option><option>Active</option><option>Completed</option>
+                    </select>
+                    <input id="nt-target" type="number" placeholder="Target sample size" class="p-3 border rounded-xl">
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="createTrial()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700">Save Trial</button>
+                    <button onclick="closeNewTrialForm()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-300">Cancel</button>
+                </div>
+            </div>
+            <div class="bg-white shadow rounded-3xl overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b">
+                        <tr class="text-slate-500 text-xs uppercase font-bold">
+                            <th class="p-5">Trial Title</th><th class="p-5">CTRI ID</th><th class="p-5">Status</th><th class="p-5">Enrollment</th><th class="p-5">Participants</th><th class="p-5">Adverse Events</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trial-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="page-participants" class="page hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold">Participants</h1>
+                <button onclick="openNewParticipantForm()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700">+ Add Participant</button>
+            </div>
+            <div id="new-participant-form" class="hidden bg-white p-6 shadow rounded-3xl space-y-4 border-2 border-emerald-100">
+                <h3 class="font-bold text-slate-700">New Participant</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <select id="np-trial" class="p-3 border rounded-xl"><option value="">Select trial...</option></select>
+                    <input id="np-code" placeholder="Participant code (e.g. SUBJ-010)" class="p-3 border rounded-xl">
+                    <select id="np-status" class="p-3 border rounded-xl">
+                        <option>Enrolled</option><option>Screening</option><option>Withdrawn</option><option>Completed</option>
+                    </select>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="createParticipant()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700">Save Participant</button>
+                    <button onclick="closeNewParticipantForm()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-300">Cancel</button>
+                </div>
+            </div>
+            <div class="bg-white p-4 shadow rounded-2xl flex items-center gap-3">
+                <label class="text-sm font-bold text-slate-600">Filter by trial:</label>
+                <select id="participant-trial-filter" onchange="filterParticipantsByTrial()" class="p-2 border rounded-lg text-sm flex-1"><option value="">All Trials</option></select>
+            </div>
+            <div class="bg-white shadow rounded-3xl overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b">
+                        <tr class="text-slate-500 text-xs uppercase font-bold">
+                            <th class="p-5">Participant Code</th><th class="p-5">Trial</th><th class="p-5">Status</th><th class="p-5">Consent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participant-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="page-safety" class="page hidden space-y-6">
+            <h1 class="text-3xl font-bold">Pharmacovigilance</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 shadow rounded-3xl border-t-4 border-red-500">
+                    <h3 class="text-lg font-bold mb-4">Report Adverse Event</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Participant</label>
+                            <select id="ae-participant" class="w-full p-3 border rounded-xl mt-1 outline-none focus:ring-2 focus:ring-red-500"><option value="">Select participant...</option></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Symptom/Event</label>
+                            <input id="ae-desc" type="text" class="w-full p-3 border rounded-xl mt-1 outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Mild nausea">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Severity</label>
+                            <select id="ae-sev" class="w-full p-3 border rounded-xl mt-1 outline-none focus:ring-2 focus:ring-red-500">
+                                <option>Mild</option><option>Moderate</option><option>Severe</option><option>Serious (SAE)</option>
+                            </select>
+                        </div>
+                        <button onclick="reportEvent()" class="w-full bg-red-600 text-white p-3 rounded-xl font-bold hover:bg-red-700 transition">Submit Report</button>
+                    </div>
+                </div>
+                <div class="bg-white p-8 shadow rounded-3xl col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">Clinical Safety Log</h3>
+                        <select id="safety-trial-filter" onchange="filterSafetyByTrial()" class="p-2 border rounded-lg text-sm"><option value="">All Trials</option></select>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 border-b text-xs uppercase text-slate-500">
+                                <tr><th class="p-4">Event</th><th class="p-4">Trial</th><th class="p-4">Severity</th><th class="p-4">Status</th></tr>
+                            </thead>
+                            <tbody id="safety-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-ai" class="page hidden space-y-6">
+            <h1 class="text-3xl font-bold">AI Multimodal Protocol Analyzer</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-3 bg-white p-8 shadow rounded-3xl">
+                    <div class="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-2xl text-blue-700 text-sm flex items-center gap-3">
+                        <i class="fas fa-info-circle"></i> <span>Upload <strong class="text-blue-800">PDF, CSV, or Excel</strong> for automated extraction.</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-600">Upload Document</label>
+                            <input type="file" id="file-upload" multiple class="w-full p-3 border rounded-xl bg-slate-50 cursor-pointer hover:bg-slate-100" accept=".pdf,.csv,.xlsx,.xls">
+                            <p class="text-[11px] text-slate-400 mt-1">Select multiple files to run a batch analysis.</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-600">Or Paste Text</label>
+                            <textarea id="ai-input" rows="3" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Paste protocol details..."></textarea>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <label class="text-sm font-bold text-slate-600">Model:</label>
+                        <select id="model-preference" onchange="updateModelPreference()" class="p-2 border rounded-lg text-sm">
+                            <option value="auto">Auto (Cloud, falls back to Local on limit)</option>
+                            <option value="cloud">Cloud only</option>
+                            <option value="local">Local only</option>
+                        </select>
+                        <span id="model-used-badge" class="text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-500"></span>
+                    </div>
+                    <button onclick="analyzeDocument()" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-magic"></i> Analyze with Gemma 4
+                    </button>
+                    <div id="ai-result-container" class="mt-8 hidden space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="bg-white p-5 shadow rounded-2xl border-t-4 border-blue-500"><h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Summary</h4><p id="res-summary" class="text-sm font-medium"></p></div>
+                            <div class="bg-white p-5 shadow rounded-2xl border-t-4 border-orange-500"><h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Risk Score</h4><p id="res-risk" class="text-2xl font-black text-orange-600"></p></div>
+                            <div class="bg-white p-5 shadow rounded-2xl border-t-4 border-purple-500"><h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Confidence</h4><p id="res-confidence" class="text-2xl font-black text-purple-600"></p><p id="res-confidence-warning" class="hidden text-[10px] text-red-600 font-bold mt-1">Low confidence - verify manually</p></div>
+                            <div class="bg-white p-5 shadow rounded-2xl border-t-4 border-emerald-500"><h4 class="text-xs uppercase font-bold text-slate-400 mb-1">Sample Size</h4><p id="res-sample" class="text-2xl font-black text-emerald-600"></p></div>
+                        </div>
+                        <div id="viz-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                        <div class="bg-white shadow rounded-2xl overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 border-b"><tr class="text-xs uppercase text-slate-500"><th class="p-4">Parameter</th><th class="p-4">Extracted Value</th></tr></thead>
+                                <tbody id="res-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="downloadReportPDF()" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition flex items-center gap-2">
+                                <i class="fas fa-file-pdf"></i> Download Report (PDF)
+                            </button>
+                        </div>
+                        <details class="bg-slate-900 rounded-2xl overflow-hidden">
+                            <summary class="p-4 text-slate-400 cursor-pointer hover:bg-slate-800 text-sm transition">View Raw JSON Output</summary>
+                            <pre id="raw-json" class="p-4 text-green-400 font-mono text-xs overflow-auto"></pre>
+                        </details>
+                    </div>
+                </div>
+                <div class="lg:col-span-1 bg-white p-6 shadow rounded-3xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-history text-slate-400"></i> History</h3>
+                        <button onclick="clearHistory()" class="text-xs font-bold text-red-500 hover:text-red-700 transition">Clear All</button>
+                    </div>
+                    <input id="history-search" type="text" placeholder="Search by filename..." class="w-full p-2 border rounded-lg text-sm mb-2 outline-none focus:ring-2 focus:ring-emerald-500" oninput="renderHistoryList()">
+                    <select id="history-sort" class="w-full p-2 border rounded-lg text-sm mb-3 outline-none focus:ring-2 focus:ring-emerald-500" onchange="renderHistoryList()">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="risk-desc">Highest risk</option>
+                        <option value="risk-asc">Lowest risk</option>
+                        <option value="conf-asc">Lowest confidence</option>
+                    </select>
+                    <div id="history-list" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-matching" class="page hidden space-y-6">
+            <h1 class="text-3xl font-bold">Precision Patient Matching</h1>
+            <div class="bg-white p-8 shadow rounded-3xl max-w-4xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-600">Patient Medical Record</label>
+                        <textarea id="patient-data" rows="6" class="w-full p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Patient age, gender, history..."></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-600">Trial Criteria</label>
+                        <textarea id="trial-criteria" rows="6" class="w-full p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Inclusion/Exclusion criteria..."></textarea>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                    <label class="text-sm font-bold text-slate-600">Model:</label>
+                    <select id="model-preference-match" onchange="updateModelPreference()" class="p-2 border rounded-lg text-sm">
+                        <option value="auto">Auto (Cloud, falls back to Local on limit)</option>
+                        <option value="cloud">Cloud only</option>
+                        <option value="local">Local only</option>
+                    </select>
+                    <span id="model-used-badge-match" class="text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-500"></span>
+                </div>
+                <button onclick="matchPatient()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200">Calculate Match Percentage</button>
+                <div id="match-result" class="mt-8 hidden p-8 bg-white border-2 border-blue-100 rounded-3xl text-center">
+                    <div id="match-pct" class="text-7xl font-black text-blue-600 mb-2">0%</div>
+                    <div id="match-verdict" class="text-2xl font-bold text-slate-800 mb-4">Verdict</div>
+                    <div id="match-reasons" class="text-left text-slate-600 bg-slate-50 p-5 rounded-2xl leading-relaxed"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var API = "http://localhost:8000";
+        var myChart = null;
+        var vizCharts = [];
+        var currentAnalysis = null;
+        var currentFilename = null;
+        var globalTrials = [];
+        var globalParticipants = [];
+        var modelPreference = "auto";
+        function updateModelPreference() {
+            var a = document.getElementById("model-preference");
+            var b = document.getElementById("model-preference-match");
+            if (a) modelPreference = a.value;
+            if (b) modelPreference = b.value;
+            if (a) a.value = modelPreference;
+            if (b) b.value = modelPreference;
+        }
+
+        function showPage(pageId) {
+            document.querySelectorAll(".page").forEach(function(p) { p.classList.add("hidden"); });
+            document.getElementById("page-" + pageId).classList.remove("hidden");
+            document.querySelectorAll(".sidebar-link").forEach(function(link) { link.classList.remove("active"); });
+            var activeLink = document.getElementById("link-" + pageId);
+            if (activeLink) activeLink.classList.add("active");
+            if (pageId === "overview") initDashboard();
+            if (pageId === "safety") loadSafetyTable();
+            if (pageId === "trials") loadTrialsTable();
+            if (pageId === "ai") loadHistory();
+            if (pageId === "participants") loadParticipantsTable();
+        }
+
+        function initDashboard() {
+            Promise.all([
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/safety/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); })
+            ]).then(function(results) {
+                var trials = results[0];
+                var safety = results[1];
+                var participants = results[2];
+                globalTrials = trials;
+                globalParticipants = participants;
+                document.getElementById("stat-trials").innerText = trials.length;
+                var totalEnroll = trials.reduce(function(acc, t) { return acc + t.enrollment; }, 0);
+                var totalTarget = trials.reduce(function(acc, t) { return acc + (t.target_sample_size || 100); }, 0);
+                document.getElementById("stat-enrollment").innerText = (totalTarget > 0 ? Math.round((totalEnroll / totalTarget) * 100) : 0) + "%";
+                document.getElementById("stat-safety").innerText = safety.length;
+                renderTrialsTable(trials, participants, safety);
+                renderSafetyTable(safety, participants, trials);
+                populateTrialDropdowns(trials);
+                var ctx = document.getElementById("trialChart").getContext("2d");
+                if (myChart) myChart.destroy();
+                myChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: trials.map(function(t) { return t.title.length > 18 ? t.title.substring(0, 18) + "..." : t.title; }),
+                        datasets: [{ label: "Enrollment", data: trials.map(function(t) { return t.enrollment; }), backgroundColor: "#10b981", borderRadius: 10 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true }, x: { ticks: { maxRotation: 20, minRotation: 0, autoSkip: false, font: { size: 11 } } } } }
+                });
+                fetchAIInsight(trials);
+            }).catch(function(e) {
+                document.getElementById("ai-insight").innerText = "Backend offline. Check uvicorn.";
+            });
+        }
+
+        function renderTrialsTable(trials, participants, safety) {
+            participants = participants || [];
+            safety = safety || [];
+            var html = "";
+            for (var i = 0; i < trials.length; i++) {
+                var t = trials[i];
+                var trialParticipants = participants.filter(function(p) { return p.trial_id === t.id; });
+                var participantIds = trialParticipants.map(function(p) { return p.id; });
+                var eventCount = safety.filter(function(e) { return participantIds.indexOf(e.participant_id) !== -1; }).length;
+                html += "<tr class=\"border-b hover:bg-slate-50 transition\">" +
+                    "<td class=\"p-4 font-medium text-slate-800\">" + t.title + "</td>" +
+                    "<td class=\"p-4 text-slate-500 text-sm\">" + (t.ctri_id || "Pending") + "</td>" +
+                    "<td class=\"p-4\"><span class=\"px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold\">" + t.status + "</span></td>" +
+                    "<td class=\"p-4 font-bold\">" + t.enrollment + "</td>" +
+                    "<td class=\"p-4\">" + trialParticipants.length + "</td>" +
+                    "<td class=\"p-4\">" + eventCount + "</td></tr>";
+            }
+            document.getElementById("trial-table-body").innerHTML = html;
+        }
+
+        function renderSafetyTable(safety, participants, trials, trialFilter) {
+            var participantMap = {};
+            (participants || []).forEach(function(p) { participantMap[p.id] = p; });
+            var trialMap = {};
+            (trials || []).forEach(function(t) { trialMap[t.id] = t.title; });
+
+            var filtered = safety;
+            if (trialFilter) {
+                filtered = safety.filter(function(e) {
+                    var p = participantMap[e.participant_id];
+                    return p && String(p.trial_id) === String(trialFilter);
+                });
+            }
+
+            var html = "";
+            filtered.forEach(function(e) {
+                var isSevere = (e.severity === "Severe" || e.severity === "Serious (SAE)");
+                var p = participantMap[e.participant_id];
+                var trialName = p ? (trialMap[p.trial_id] || "Trial " + p.trial_id) : "Unknown";
+                html += "<tr class=\"border-b hover:bg-slate-50 transition\">" +
+                    "<td class=\"p-4 text-slate-700\">" + e.description + "</td>" +
+                    "<td class=\"p-4 text-slate-500 text-sm\">" + trialName + "</td>" +
+                    "<td class=\"p-4\"><span class=\"font-bold " + (isSevere ? "text-red-600" : "text-slate-700") + "\">" + e.severity + "</span></td>" +
+                    "<td class=\"p-4\"><span class=\"px-2 py-1 bg-slate-100 rounded text-xs text-slate-500\">Logged</span></td></tr>";
+            });
+            document.getElementById("safety-table-body").innerHTML = html || "<tr><td class=\"p-4 text-slate-400\" colspan=\"4\">No events found.</td></tr>";
+        }
+
+        function loadTrialsTable() {
+            Promise.all([
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/safety/").then(function(r) { return r.json(); })
+            ]).then(function(res) {
+                globalTrials = res[0];
+                globalParticipants = res[1];
+                renderTrialsTable(res[0], res[1], res[2]);
+                populateTrialDropdowns(res[0]);
+            });
+        }
+
+        function loadSafetyTable() {
+            Promise.all([
+                fetch(API + "/api/safety/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); })
+            ]).then(function(res) {
+                globalParticipants = res[1];
+                globalTrials = res[2];
+                populateTrialDropdowns(res[2]);
+                renderSafetyTable(res[0], res[1], res[2]);
+            });
+        }
+
+        function filterSafetyByTrial() {
+            var trialId = document.getElementById("safety-trial-filter").value;
+            fetch(API + "/api/safety/").then(function(r) { return r.json(); }).then(function(events) {
+                renderSafetyTable(events, globalParticipants, globalTrials, trialId);
+            });
+        }
+
+        function populateTrialDropdowns(trials) {
+            var filterSelects = [document.getElementById("participant-trial-filter"), document.getElementById("safety-trial-filter")];
+            filterSelects.forEach(function(sel) {
+                if (!sel) return;
+                var current = sel.value;
+                var html = "<option value=\"\">All Trials</option>";
+                trials.forEach(function(t) { html += "<option value=\"" + t.id + "\">" + t.title + "</option>"; });
+                sel.innerHTML = html;
+                if (current) sel.value = current;
+            });
+            var npTrial = document.getElementById("np-trial");
+            if (npTrial) {
+                var html2 = "<option value=\"\">Select trial...</option>";
+                trials.forEach(function(t) { html2 += "<option value=\"" + t.id + "\">" + t.title + "</option>"; });
+                npTrial.innerHTML = html2;
+            }
+            populateParticipantDropdown();
+        }
+
+        function populateParticipantDropdown() {
+            var sel = document.getElementById("ae-participant");
+            if (!sel) return;
+            var trialMap = {};
+            globalTrials.forEach(function(t) { trialMap[t.id] = t.title; });
+            var html = "<option value=\"\">Select participant...</option>";
+            globalParticipants.forEach(function(p) {
+                html += "<option value=\"" + p.id + "\">" + p.participant_code + " (" + (trialMap[p.trial_id] || "Trial " + p.trial_id) + ")</option>";
+            });
+            sel.innerHTML = html;
+        }
+
+        function loadParticipantsTable() {
+            Promise.all([
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); })
+            ]).then(function(res) {
+                globalTrials = res[0];
+                globalParticipants = res[1];
+                populateTrialDropdowns(res[0]);
+                renderParticipantsTable(globalParticipants, globalTrials);
+            });
+        }
+
+        function filterParticipantsByTrial() {
+            var trialId = document.getElementById("participant-trial-filter").value;
+            var filtered = trialId ? globalParticipants.filter(function(p) { return String(p.trial_id) === String(trialId); }) : globalParticipants;
+            renderParticipantsTable(filtered, globalTrials);
+        }
+
+        function renderParticipantsTable(participants, trials) {
+            var trialMap = {};
+            (trials || []).forEach(function(t) { trialMap[t.id] = t.title; });
+            var html = "";
+            participants.forEach(function(p) {
+                html += "<tr class=\"border-b hover:bg-slate-50 transition\">" +
+                    "<td class=\"p-4 font-medium text-slate-800\">" + p.participant_code + "</td>" +
+                    "<td class=\"p-4 text-slate-500 text-sm\">" + (trialMap[p.trial_id] || "Trial " + p.trial_id) + "</td>" +
+                    "<td class=\"p-4\"><span class=\"px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold\">" + p.status + "</span></td>" +
+                    "<td class=\"p-4\">" + (p.consent ? "Yes" : "No") + "</td></tr>";
+            });
+            document.getElementById("participant-table-body").innerHTML = html || "<tr><td class=\"p-4 text-slate-400\" colspan=\"4\">No participants found.</td></tr>";
+        }
+
+        function openNewParticipantForm() { document.getElementById("new-participant-form").classList.remove("hidden"); }
+        function closeNewParticipantForm() { document.getElementById("new-participant-form").classList.add("hidden"); }
+
+        function createParticipant() {
+            var trialId = document.getElementById("np-trial").value;
+            var code = document.getElementById("np-code").value.trim();
+            var status = document.getElementById("np-status").value;
+            if (!trialId || !code) { alert("Select a trial and enter a participant code!"); return; }
+            fetch(API + "/api/participants/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ trial_id: parseInt(trialId, 10), participant_code: code, status: status, consent: true })
+            }).then(function(res) {
+                if (!res.ok) { return res.text().then(function(t) { throw new Error(t); }); }
+                document.getElementById("np-code").value = "";
+                closeNewParticipantForm();
+                loadParticipantsTable();
+            }).catch(function(e) { alert("Could not add participant: " + e.message); });
+        }
+
+        function fetchAIInsight(trials) {
+            var badge = document.getElementById("ai-status-badge");
+            fetch(API + "/api/ai/status").then(function(r) { return r.json(); }).then(function(status) {
+                if (status.status === "offline") {
+                    badge.innerText = "Offline";
+                    badge.className = "text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-600";
+                    document.getElementById("ai-insight").innerText = "AI Offline - Check Ollama";
+                    return;
+                }
+                badge.innerText = "Online";
+                badge.className = "text-[10px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-600";
+                fetch(API + "/api/ai/analyze-text", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: "Trials: " + JSON.stringify(trials) + ". Provide a concise risk summary." })
+                }).then(function(res) {
+                    if (!res.ok) throw new Error("bad response");
+                    return res.json();
+                }).then(function(data) {
+                    var analysis = data.analysis;
+                    document.getElementById("ai-insight").innerText = analysis.summary || "All systems normal.";
+                    document.getElementById("stat-risk").innerText = (analysis.risk_score !== undefined ? analysis.risk_score : "-");
+                    document.getElementById("ai-summary-box").classList.remove("hidden");
+                    document.getElementById("ai-summary-text").innerText = analysis.risk_analysis || "No risks detected.";
+                }).catch(function() {
+                    document.getElementById("ai-insight").innerText = "AI Offline - Check Ollama";
+                });
+            }).catch(function() {
+                badge.innerText = "Offline";
+                document.getElementById("ai-insight").innerText = "AI Offline - Check Ollama";
+            });
+        }
+
+        function reportEvent() {
+            var desc = document.getElementById("ae-desc").value;
+            var sev = document.getElementById("ae-sev").value;
+            var participantId = document.getElementById("ae-participant").value;
+            if (!desc) { alert("Please enter a symptom!"); return; }
+            if (!participantId) { alert("Please select a participant!"); return; }
+            fetch(API + "/api/safety/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ participant_id: parseInt(participantId, 10), description: desc, severity: sev, causality: "Related" })
+            }).then(function() {
+                document.getElementById("ae-desc").value = "";
+                alert("Report submitted successfully!");
+                loadSafetyTable();
+            });
+        }
+
+        function openNewTrialForm() { document.getElementById("new-trial-form").classList.remove("hidden"); }
+        function closeNewTrialForm() { document.getElementById("new-trial-form").classList.add("hidden"); }
+        function createTrial() {
+            var title = document.getElementById("nt-title").value.trim();
+            if (!title) { alert("Please enter a trial title!"); return; }
+            var payload = {
+                title: title,
+                ctri_id: document.getElementById("nt-ctri").value.trim() || "Pending",
+                status: document.getElementById("nt-status").value,
+                enrollment: 0,
+                target_sample_size: parseInt(document.getElementById("nt-target").value, 10) || 100
+            };
+            fetch(API + "/api/trials/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            }).then(function() {
+                closeNewTrialForm();
+                document.getElementById("nt-title").value = "";
+                document.getElementById("nt-ctri").value = "";
+                document.getElementById("nt-target").value = "";
+                loadTrialsTable();
+            });
+        }
+
+        function renderConfidence(analysis) {
+            var conf = (analysis.confidence !== undefined && analysis.confidence !== null) ? analysis.confidence : null;
+            var confEl = document.getElementById("res-confidence");
+            var warnEl = document.getElementById("res-confidence-warning");
+            if (conf === null) { confEl.innerText = "N/A"; warnEl.classList.add("hidden"); return; }
+            confEl.innerText = conf + "%";
+            if (conf < 60) { warnEl.classList.remove("hidden"); } else { warnEl.classList.add("hidden"); }
+        }
+
+        function renderVisualizations(visualizations) {
+            var container = document.getElementById("viz-container");
+            container.innerHTML = "";
+            vizCharts.forEach(function(c) { c.destroy(); });
+            vizCharts = [];
+            if (!visualizations || visualizations.length === 0) return;
+            visualizations.forEach(function(viz, idx) {
+                var wrapper = document.createElement("div");
+                wrapper.className = "bg-white p-5 shadow rounded-2xl border";
+                var title = document.createElement("h4");
+                title.className = "text-xs uppercase font-bold text-slate-400 mb-3";
+                title.innerText = viz.title || "Chart";
+                var canvasWrap = document.createElement("div");
+                canvasWrap.style.height = "220px";
+                canvasWrap.style.position = "relative";
+                var canvas = document.createElement("canvas");
+                canvas.id = "viz-chart-" + idx;
+                canvasWrap.appendChild(canvas);
+                wrapper.appendChild(title);
+                wrapper.appendChild(canvasWrap);
+                container.appendChild(wrapper);
+                var palette = ["#10b981", "#3b82f6", "#f97316", "#8b5cf6", "#ef4444", "#14b8a6", "#eab308"];
+                var colors = (viz.labels || []).map(function(x, i) { return palette[i % palette.length]; });
+                setTimeout(function() {
+                    var chart = new Chart(canvas.getContext("2d"), {
+                        type: (viz.type === "pie" ? "pie" : "bar"),
+                        data: {
+                            labels: viz.labels || [],
+                            datasets: [{
+                                label: viz.title || "",
+                                data: viz.values || [],
+                                backgroundColor: colors,
+                                borderRadius: (viz.type === "pie" ? 0 : 6)
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: (viz.type === "pie"), position: "bottom" } },
+                            scales: (viz.type === "pie" ? {} : { y: { beginAtZero: true } })
+                        }
+                    });
+                    vizCharts.push(chart);
+                }, 0);
+            });
+        }
+
+        function displayAnalysis(analysis) {
+            currentAnalysis = analysis;
+            document.getElementById("res-summary").innerText = analysis.summary || "";
+            document.getElementById("res-risk").innerText = (analysis.risk_score !== undefined ? analysis.risk_score : "N/A");
+            document.getElementById("res-sample").innerText = (analysis.structured_data && analysis.structured_data.sample_size) ? analysis.structured_data.sample_size : "N/A";
+            document.getElementById("ai-result-container").classList.remove("hidden");
+            renderConfidence(analysis);
+            renderVisualizations(analysis.visualizations || []);
+            var tableBody = document.getElementById("res-table-body");
+            tableBody.innerHTML = "";
+            var sd = analysis.structured_data || {};
+            for (var key in sd) {
+                tableBody.innerHTML += "<tr class=\"border-b hover:bg-slate-50\"><td class=\"p-4 font-bold text-slate-600 capitalize\">" + key.replace("_", " ") + "</td><td class=\"p-4\">" + sd[key] + "</td></tr>";
+            }
+            document.getElementById("raw-json").innerText = JSON.stringify(analysis, null, 2);
+        }
+
+        var historyItems = [];
+
+        function loadHistory() {
+            fetch(API + "/api/ai/analyses").then(function(r) { return r.json(); }).then(function(items) {
+                historyItems = items || [];
+                renderHistoryList();
+            }).catch(function() {
+                document.getElementById("history-list").innerHTML = "<p class=\"text-slate-400 text-sm\">Could not load history.</p>";
+            });
+        }
+
+        function renderHistoryList() {
+            var list = document.getElementById("history-list");
+            var searchEl = document.getElementById("history-search");
+            var sortEl = document.getElementById("history-sort");
+            var query = searchEl ? searchEl.value.trim().toLowerCase() : "";
+            var sortMode = sortEl ? sortEl.value : "newest";
+
+            var items = historyItems.slice();
+
+            if (query) {
+                items = items.filter(function(item) {
+                    return (item.filename || "").toLowerCase().indexOf(query) !== -1;
+                });
+            }
+
+            items.sort(function(a, b) {
+                if (sortMode === "oldest") return new Date(a.created_at) - new Date(b.created_at);
+                if (sortMode === "risk-desc") return (b.risk_score || 0) - (a.risk_score || 0);
+                if (sortMode === "risk-asc") return (a.risk_score || 0) - (b.risk_score || 0);
+                if (sortMode === "conf-asc") return (a.confidence !== undefined && a.confidence !== null ? a.confidence : 999) - (b.confidence !== undefined && b.confidence !== null ? b.confidence : 999);
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
+
+            if (items.length === 0) {
+                list.innerHTML = "<p class=\"text-slate-400 text-sm\">" + (historyItems.length === 0 ? "No analyses yet." : "No matches found.") + "</p>";
+                return;
+            }
+
+            var html = "";
+            items.forEach(function(item) {
+                var conf = (item.confidence !== undefined && item.confidence !== null) ? item.confidence : null;
+                var confBadge = (conf !== null && conf < 60) ? "<span class=\"text-[9px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold ml-2\">LOW CONF</span>" : "";
+                html += "<div class=\"p-3 border rounded-xl hover:bg-slate-50 transition flex items-start justify-between gap-2\">" +
+                    "<div onclick=\"loadHistoryItem(" + item.id + ")\" class=\"cursor-pointer flex-1 min-w-0\">" +
+                    "<div class=\"text-sm font-bold text-slate-700 truncate\">" + item.filename + confBadge + "</div>" +
+                    "<div class=\"text-xs text-slate-400 mt-1\">Risk: " + item.risk_score + " | " + new Date(item.created_at).toLocaleString() + "</div></div>" +
+                    "<button onclick=\"deleteHistoryItem(" + item.id + ", event)\" class=\"text-slate-300 hover:text-red-500 transition text-sm px-1\" title=\"Delete\">&times;</button></div>";
+            });
+            list.innerHTML = html;
+        }
+
+        function deleteHistoryItem(id, evt) {
+            if (evt) evt.stopPropagation();
+            if (!confirm("Delete this analysis?")) return;
+            fetch(API + "/api/ai/analyses/" + id, { method: "DELETE" }).then(function() {
+                loadHistory();
+            });
+        }
+
+        function clearHistory() {
+            if (!confirm("Clear ALL analysis history? This cannot be undone.")) return;
+            fetch(API + "/api/ai/analyses", { method: "DELETE" }).then(function() {
+                loadHistory();
+            });
+        }
+
+        function loadHistoryItem(id) {
+            fetch(API + "/api/ai/analyses/" + id).then(function(r) { return r.json(); }).then(function(record) {
+                currentFilename = record.filename;
+                displayAnalysis(record.analysis);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            });
+        }
+
+        function downloadReportPDF() {
+            if (!currentAnalysis) { alert("No analysis to export yet."); return; }
+            var doc = new jspdf.jsPDF();
+            var y = 15;
+            var pageWidth = 180;
+
+            doc.setFontSize(16);
+            doc.text("AIIA Clinical AI Analysis Report", 15, y); y += 8;
+            doc.setFontSize(10);
+            doc.text("File: " + (currentFilename || "N/A"), 15, y); y += 6;
+            doc.text("Generated: " + new Date().toLocaleString(), 15, y); y += 10;
+
+            doc.setFontSize(12);
+            doc.text("Summary", 15, y); y += 6;
+            doc.setFontSize(10);
+            var summaryLines = doc.splitTextToSize(currentAnalysis.summary || "N/A", pageWidth);
+            doc.text(summaryLines, 15, y); y += summaryLines.length * 5 + 6;
+
+            doc.setFontSize(12);
+            doc.text("Risk Score: " + (currentAnalysis.risk_score !== undefined ? currentAnalysis.risk_score : "N/A") + "   |   Confidence: " + (currentAnalysis.confidence !== undefined ? currentAnalysis.confidence + "%" : "N/A"), 15, y);
+            y += 10;
+
+            doc.setFontSize(12);
+            doc.text("Structured Data", 15, y); y += 6;
+            doc.setFontSize(10);
+            var sd = currentAnalysis.structured_data || {};
+            for (var key in sd) {
+                if (y > 270) { doc.addPage(); y = 15; }
+                var line = key.replace(/_/g, " ") + ": " + sd[key];
+                var lines = doc.splitTextToSize(line, pageWidth);
+                doc.text(lines, 15, y);
+                y += lines.length * 5 + 2;
+            }
+            y += 5;
+
+            vizCharts.forEach(function(chart) {
+                if (y > 200) { doc.addPage(); y = 15; }
+                var imgData = chart.toBase64Image();
+                doc.addImage(imgData, "PNG", 15, y, 90, 55);
+                y += 60;
+            });
+
+            var safeName = (currentFilename || "analysis").replace(/\.[^/.]+$/, "").replace(/[^a-z0-9_-]/gi, "_");
+            doc.save("aiia_report_" + safeName + ".pdf");
+        }
+
+        function analyzeDocument() {
+            var fileInput = document.getElementById("file-upload");
+            var textInput = document.getElementById("ai-input");
+            var resDiv = document.getElementById("raw-json");
+            var container = document.getElementById("ai-result-container");
+
+            if (fileInput.files.length > 1) {
+                batchAnalyze(Array.prototype.slice.call(fileInput.files));
+                return;
+            }
+
+            container.classList.remove("hidden");
+            resDiv.innerText = "Gemma 4 is analyzing medical data...";
+            var formData = new FormData();
+            var uploadedName = "pasted-text.txt";
+            if (fileInput.files[0]) {
+                formData.append("file", fileInput.files[0]);
+                formData.append("model_preference", modelPreference);
+                uploadedName = fileInput.files[0].name;
+            } else if (textInput.value) {
+                formData.append("file", new Blob([textInput.value]), "text.txt");
+                formData.append("model_preference", modelPreference);
+            } else {
+                alert("Please upload a file or paste text!");
+                return;
+            }
+            fetch(API + "/api/ai/analyze-document", { method: "POST", body: formData }).then(function(res) {
+                if (!res.ok) { return res.text().then(function(t) { throw new Error(t); }); }
+                return res.json();
+            }).then(function(data) {
+                currentFilename = uploadedName;
+                displayAnalysis(data.analysis);
+                loadHistory();
+                var badge = document.getElementById("model-used-badge");
+                if (badge && data.model_used) badge.innerText = "Answered by: " + data.model_used;
+            }).catch(function(e) {
+                resDiv.innerText = "AI Error: " + e.message;
+            });
+        }
+
+        function batchAnalyze(files) {
+            var resDiv = document.getElementById("raw-json");
+            var container = document.getElementById("ai-result-container");
+            container.classList.remove("hidden");
+            resDiv.innerText = "Analyzing " + files.length + " files...";
+
+            var results = [];
+            var idx = 0;
+
+            function next() {
+                if (idx >= files.length) {
+                    renderBatchSummary(results);
+                    loadHistory();
+                    return;
+                }
+                var file = files[idx];
+                resDiv.innerText = "Analyzing file " + (idx + 1) + " of " + files.length + ": " + file.name + "...";
+                var formData = new FormData();
+                formData.append("file", file);
+                formData.append("model_preference", modelPreference);
+                fetch(API + "/api/ai/analyze-document", { method: "POST", body: formData }).then(function(res) {
+                    if (!res.ok) { return res.text().then(function(t) { throw new Error(t); }); }
+                    return res.json();
+                }).then(function(data) {
+                    results.push({ filename: file.name, analysis: data.analysis });
+                    idx++;
+                    next();
+                }).catch(function(e) {
+                    results.push({ filename: file.name, error: e.message });
+                    idx++;
+                    next();
+                });
+            }
+            next();
+        }
+
+        function renderBatchSummary(results) {
+            var valid = results.filter(function(r) { return r.analysis; });
+            var avgRisk = valid.length ? Math.round(valid.reduce(function(a, r) { return a + (r.analysis.risk_score || 0); }, 0) / valid.length) : 0;
+            var avgConf = valid.length ? Math.round(valid.reduce(function(a, r) { return a + (r.analysis.confidence || 0); }, 0) / valid.length) : 0;
+
+            var labels = results.map(function(r) { return r.filename.length > 15 ? r.filename.substring(0, 15) + "..." : r.filename; });
+            var values = results.map(function(r) { return r.analysis ? r.analysis.risk_score : 0; });
+
+            var structured = { files_processed: results.length, files_succeeded: valid.length };
+            results.forEach(function(r) {
+                structured[r.filename] = r.analysis ? ("Risk " + r.analysis.risk_score + ", Confidence " + r.analysis.confidence + "%") : ("Error: " + r.error);
+            });
+
+            var batchAnalysisResult = {
+                summary: "Batch analysis of " + results.length + " file(s): average risk score " + avgRisk + ", average confidence " + avgConf + "%.",
+                risk_score: avgRisk,
+                confidence: avgConf,
+                structured_data: structured,
+                visualizations: [{ title: "Risk Score by File", type: "bar", labels: labels, values: values }]
+            };
+
+            currentFilename = "batch_" + results.length + "_files";
+            displayAnalysis(batchAnalysisResult);
+        }
+
+        function matchPatient() {
+            var pData = document.getElementById("patient-data").value;
+            var tCrit = document.getElementById("trial-criteria").value;
+            var resDiv = document.getElementById("match-result");
+            if (!pData || !tCrit) { alert("Fill both records!"); return; }
+            resDiv.classList.remove("hidden");
+            document.getElementById("match-verdict").innerText = "Calculating...";
+            fetch(API + "/api/ai/patient-match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ patient_data: pData, trial_criteria: tCrit, model_preference: modelPreference })
+            }).then(function(res) {
+                if (!res.ok) { return res.text().then(function(t) { throw new Error(t); }); }
+                return res.json();
+            }).then(function(data) {
+                var match = data.match;
+                document.getElementById("match-pct").innerText = match.match_percentage + "%";
+                document.getElementById("match-verdict").innerText = match.verdict;
+                document.getElementById("match-reasons").innerText = (match.reasons || []).join("\n");
+                var mBadge = document.getElementById("model-used-badge-match");
+                if (mBadge && data.model_used) mBadge.innerText = "Answered by: " + data.model_used;
+            }).catch(function(e) {
+                document.getElementById("match-verdict").innerText = "Match failed.";
+            });
+        }
+
+        function exportFHIR() {
+            fetch(API + "/api/fhir/export").then(function(r) { return r.json(); }).then(function(data) {
+                var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url; a.download = "aiia_fhir_export.json"; a.click();
+            });
+        }
+
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>
+
+
+
+
+
+

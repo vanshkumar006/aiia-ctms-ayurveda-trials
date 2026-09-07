@@ -1,0 +1,163 @@
+{
+    "trials": [
+        {
+            "id": 1,
+            "title": "Ashwagandha for Chronic Stress",
+            "protocol_number": "AYU-2026-001",
+            "ctri_id": "CTRI/AAA-2026/123",
+            "status": "Active",
+            "enrollment": 65,
+            "target_sample_size": 100,
+            "phase": "Phase II",
+            "sponsor": "AIIA Research Wing"
+        },
+        {
+            "id": 2,
+            "title": "Triphala in Type 2 Diabetes",
+            "protocol_number": "AYU-2026-002",
+            "ctri_id": "Pending",
+            "status": "Ethics Review",
+            "enrollment": 0,
+            "target_sample_size": 150,
+            "phase": "Phase III",
+            "sponsor": "National Ayurveda Council"
+        },
+        {
+            "id": 3,
+            "title": "Brahmi for Cognitive Enhancement",
+            "protocol_number": "AYU-2026-003",
+            "ctri_id": "CTRI/AAA-2026/456",
+            "status": "Completed",
+            "enrollment": 80,
+            "target_sample_size": 80,
+            "phase": "Phase I",
+            "sponsor": "AIIA Research Wing"
+        }
+    ],
+    "participants": [
+        {
+            "id": 1,
+            "trial_id": 1,
+            "participant_code": "SUBJ-001",
+            "status": "Enrolled",
+            "consent": true
+        },
+        {
+            "id": 2,
+            "trial_id": 1,
+            "participant_code": "SUBJ-002",
+            "status": "Withdrawn",
+            "consent": true
+        },
+        {
+            "id": 3,
+            "trial_id": 1,
+            "participant_code": "SUBJ-003",
+            "status": "Enrolled",
+            "consent": true
+        }
+    ],
+    "safety_events": [
+        {
+            "id": 1,
+            "participant_id": 1,
+            "description": "Mild insomnia",
+            "severity": "Mild",
+            "causality": "Possibly Related"
+        },
+        {
+            "id": 2,
+            "participant_id": 3,
+            "description": "Gastrointestinal upset",
+            "severity": "Moderate",
+            "causality": "Related"
+        },
+        {
+            "participant_id": 1,
+            "description": "fever",
+            "severity": "Mild",
+            "causality": "Related",
+            "id": 3
+        }
+    ],
+    "regulatory_logs": [
+        {
+            "id": 1,
+            "trial_id": 1,
+            "event": "Ethics Approval Granted",
+            "date": "2026-01-15"
+        },
+        {
+            "id": 2,
+            "trial_id": 2,
+            "event": "Protocol Submitted to EC",
+            "date": "2026-05-10"
+        }
+    ],
+    "ai_analyses": [
+        {
+            "id": 2,
+            "filename": "healthcare_data.csv",
+            "created_at": "2026-09-05T15:49:31.501149Z",
+            "analysis": {
+                "summary": "The dataset contains clinical records for 45 patients across various departments, including Dermatology, Pediatrics, and Cardiology. It tracks diagnoses such as Cancer, Diabetes, and Fracture, along with associated treatments and billing amounts.",
+                "risk_score": 45,
+                "confidence": 85,
+                "structured_data": {
+                    "sample_size": 45,
+                    "phase": "Not specified",
+                    "inclusion_criteria": "Patients admitted to the facility across various medical departments.",
+                    "exclusion_criteria": "Not specified"
+                },
+                "visualizations": [
+                    {
+                        "title": "Patient Count by Department",
+                        "type": "bar",
+                        "labels": [
+                            "Pediatrics",
+                            "Dermatology",
+                            "Neurology",
+                            "Cardiology",
+                            "General Medicine",
+                            "Orthopedics",
+                            "Oncology"
+                        ],
+                        "values": [
+                            6,
+                            8,
+                            4,
+                            5,
+                            6,
+                            6,
+                            3
+                        ]
+                    },
+                    {
+                        "title": "Patient Count by Diagnosis",
+                        "type": "pie",
+                        "labels": [
+                            "Migraine",
+                            "Diabetes",
+                            "Asthma",
+                            "Cancer",
+                            "Fracture",
+                            "Healthy",
+                            "Flu",
+                            "Hypertension"
+                        ],
+                        "values": [
+                            4,
+                            6,
+                            4,
+                            5,
+                            6,
+                            5,
+                            5,
+                            3
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
