@@ -66,8 +66,9 @@ Layer	Technology
     Ollama (Required for AI features)
 
 Installation & Setup
-1. Backend Configurationgit clone <your-repo-url>
-    cd aiia-ctms/backend
+1. Backend Configuration
+       git clone <your-repo-url>
+       cd aiia-ctms/backend
 
 # Create and activate virtual environment
     python -m venv venv
@@ -75,16 +76,18 @@ Installation & Setup
     # venv\Scripts\activate   # Windows
     pip install -r requirements.txt
 
-2. Environment Setup
-   Create a .env file in the backend/ directory:
-    SECRET_KEY=***
-    ALGORITHM=HS256
-    ACCESS_TOKEN_EXPIRE_MINUTES=1440
-    DEMO_USER_EMAIL=admin@example.com
-    DEMO_USER_PASSWORD=***
-    OLLAMA_BASE_URL=http://127.0.0.1:11434
-    PRIMARY_MODEL=gemma 4
-    FALLBACK_MODEL=mistral
+**2. Environment Setup**
+Create a `.env` file in the `backend/` directory with the following content:
+
+```env
+SECRET_KEY=***
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+DEMO_USER_EMAIL=admin@example.com
+DEMO_USER_PASSWORD=***
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+PRIMARY_MODEL=gemma 4
+FALLBACK_MODEL=mistral
    
 3. Database Seeding (Optional)
     python ../database/seeds/seed_data.py
