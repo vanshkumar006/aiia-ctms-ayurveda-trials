@@ -40,35 +40,43 @@ The AI Analyzer, Patient Matcher, and the dashboard's AI risk-insight widget all
 2. **Pull the Model:** Download the fallback model to your local machine:
    ```bash
    ollama pull mistral
+   ollama pull gemma4:31b-cloud 
 
-3.Sync Configuration: Match the model names in your .env file to what is shown in ollama list.
-    PRIMARY_MODEL: gemma 4 (Cloud/Primary)
-    FALLBACK_MODEL: mistral (Local/Ollama)
-Model Selection Logic:
-    In the AI Analyzer and Patient Matcher pages, you will find a Model Dropdown:
-Auto (Recommended): Tries the Primary/Cloud model first; automatically falls back to Local if the cloud hits a rate limit.
-    Cloud only: Forces the use of the Primary model.
-    Local only: Forces the use of the local Ollama model.
+⚙️ AI Configuration & Setup
+3. Sync Configuration
+  Match the model names in your .env file to the output of ollama list:
+
+      PRIMARY_MODEL : gemma 4 (Cloud/Primary)
+      FALLBACK_MODEL : mistral (Local/Ollama)
+Model Selection Logic
+   In the AI Analyzer and Patient Matcher pages, use the Model Dropdown:
+
+      Auto (Recommended): Tries the Primary/Cloud model first; automatically falls back to Local if the cloud hits a rate limit.
+      Cloud only: Forces the use of the Primary model.
+      Local only: Forces the use of the local Ollama model.
+
 
 🛠️ Tech Stack
 Layer	Technology
-    Backend	Python 3.10+, FastAPI, SQLAlchemy, SQLite, Pydantic
-    Authentication	JWT (python-jose, passlib)
-    AI Engine	Ollama, Gemma Model, JSON-mode prompt contracts
-    Data Processing	Pandas, PyPDF2
-    Frontend	Next.js 14, React, TypeScript, Tailwind CSS (or Standalone HTML/JS)
+
+    Backend :	Python 3.10+, FastAPI, SQLAlchemy, SQLite, Pydantic
+    Authentication :	JWT (python-jose, passlib)
+    AI Engine :	Ollama, Gemma Model, JSON-mode prompt contracts
+    Data Processing :	Pandas, PyPDF2
+    Frontend : Next.js 14, React, TypeScript, Tailwind CSS (or Standalone HTML/JS)
 
 
 🏁 Getting Started
-    Prerequisites
-    Python 3.10+
-    Node.js 18+ (Optional: only for Next.js frontend)
-    Ollama (Required for AI features)
+  Prerequisites:
+   Python 3.10+
+   Node.js 18+ (Optional: only for Next.js frontend)
+   Ollama (Required for AI features)
+   Installation & Setup
 
-Installation & Setup
-1. Backend Configuration
-       git clone <your-repo-url>
-       cd aiia-ctms/backend
+Backend Configuration
+
+      git clone <repo-url>
+      cd aiia-ctms/backend
 
 # Create and activate virtual environment
     python -m venv venv
