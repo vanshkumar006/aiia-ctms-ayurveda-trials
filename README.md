@@ -94,25 +94,27 @@ Installation & Setup
    Start Frontend (Next.js): cd ../frontend && npm install && npm run dev
    Access Dashboard: Visit http://localhost:3000 (or open index.html for the simple version).
 
-📁 Project Structure
-         aiia-ctms/
-         ├── backend/
-         │   ├── main.py               # App entry point
-         │   ├── aiia_ctms.db          # SQLite Database
-         │   ├── app/
-         │   │   ├── core/             # Config & DB connection
-         │   │   ├── models/           # Data schemas
-         │   │   └── modules/          # Auth, Trials, Safety, FHIR, AI Service
-         │   └── tests/                # Pytest suite
-         ├── ai_engine/
-         │   ├── prompts/              # AI Prompt engineering
-         │   ├── processing/           # Document extraction logic
-         │   └── validators/           # JSON output validation
-         ├── database/
-         │   └── seeds/                # Demo data scripts
-         └── frontend/
-             ├── index.html            # Standalone dashboard
-             └── app/                  # Next.js application
+## 📁 Project Structure
+
+```text
+aiia-ctms/
+├── backend/
+│   ├── main.py               # App entry point
+│   ├── aiia_ctms.db          # SQLite Database
+│   ├── app/
+│   │   ├── core/             # Config & DB connection
+│   │   ├── models/           # Data schemas
+│   │   └── modules/          # Auth, Trials, Safety, FHIR, AI Service
+│   └── tests/                # Pytest suite
+├── ai_engine/
+│   ├── prompts/              # AI Prompt engineering
+│   ├── processing/           # Document extraction logic
+│   └── validators/           # JSON output validation
+├── database/
+│   └── seeds/                # Demo data scripts
+└── frontend/
+    ├── index.html            # Standalone dashboard
+    └── app/                  # Next.js application
              
 🧪 Testing
 Run the smoke-test suite to verify core functionality:
