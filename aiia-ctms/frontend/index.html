@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .page { transition: opacity 0.3s ease; }
@@ -28,7 +29,7 @@
             <a href="#" onclick="showPage('ai')" class="sidebar-link flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-800 transition" id="link-ai"><i class="fas fa-brain text-purple-400"></i> AI Analyzer</a>
             <a href="#" onclick="showPage('matching')" class="sidebar-link flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-800 transition" id="link-matching"><i class="fas fa-user-check text-blue-400"></i> Patient Matcher</a>
             <div class="pt-4 border-t border-emerald-800 mt-4">
-                <a href="#" onclick="exportFHIR()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-800 transition text-emerald-200"><i class="fas fa-file-export"></i> CDISC/FHIR Export</a>
+                <a href="#" onclick="showPage('export')" class="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-800 transition text-emerald-200" id="link-export"><i class="fas fa-file-export"></i> Data Export</a>
             </div>
         </nav>
         <div class="absolute bottom-5 left-5 text-[10px] text-emerald-400 px-2 uppercase tracking-widest">
@@ -265,6 +266,32 @@
                     </select>
                     <div id="history-list" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="page-export" class="page hidden space-y-6">
+            <h1 class="text-3xl font-bold">Data Export</h1>
+            <div class="bg-white p-8 shadow rounded-3xl max-w-3xl space-y-6">
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    Choose a format based on what you need it for: <strong>PDF</strong> and <strong>Excel</strong> for reports and reviews,
+                    <strong>CSV</strong> for spreadsheet import, or <strong>FHIR JSON</strong> specifically for interoperability
+                    with other FHIR-compliant hospital/research systems.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="exportPDF()" class="bg-red-600 text-white p-4 rounded-2xl font-bold hover:bg-red-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-file-pdf"></i> Download PDF Report
+                    </button>
+                    <button onclick="exportExcel()" class="bg-emerald-600 text-white p-4 rounded-2xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-file-excel"></i> Download Excel Workbook
+                    </button>
+                    <button onclick="exportTrialsCSV()" class="bg-blue-600 text-white p-4 rounded-2xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-file-csv"></i> Download Trials CSV
+                    </button>
+                    <button onclick="exportFHIR()" class="bg-slate-700 text-white p-4 rounded-2xl font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-file-code"></i> Download FHIR JSON
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400">PDF and Excel include trials, participants, and safety events. CSV covers trials only. FHIR JSON is the ResearchStudy bundle for system integration.</p>
             </div>
         </div>
 
@@ -926,6 +953,101 @@
             });
         }
 
+                function csvEscape(val) {
+            if (val === null || val === undefined) return "";
+            var str = String(val);
+            if (str.indexOf(",") !== -1 || str.indexOf("\"") !== -1 || str.indexOf("\n") !== -1) {
+                return "\"" + str.replace(/"/g, "\"\"") + "\"";
+            }
+            return str;
+        }
+
+        function arrayToCsv(rows) {
+            return rows.map(function(row) { return row.map(csvEscape).join(","); }).join("\r\n");
+        }
+
+        function exportTrialsCSV() {
+            fetch(API + "/api/trials/").then(function(r) { return r.json(); }).then(function(trials) {
+                var header = ["ID", "Title", "CTRI ID", "Status", "Enrollment", "Target Sample Size", "Protocol Number", "Phase", "Sponsor"];
+                var rows = [header];
+                trials.forEach(function(t) {
+                    rows.push([t.id, t.title, t.ctri_id, t.status, t.enrollment, t.target_sample_size, t.protocol_number, t.phase, t.sponsor]);
+                });
+                var csv = arrayToCsv(rows);
+                var blob = new Blob([csv], { type: "text/csv" });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url; a.download = "aiia_trials_export.csv"; a.click();
+            });
+        }
+
+        function exportExcel() {
+            Promise.all([
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/safety/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/regulatory/").then(function(r) { return r.json(); })
+            ]).then(function(res) {
+                var wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(res[0]), "Trials");
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(res[1]), "Participants");
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(res[2]), "Safety Events");
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(res[3]), "Regulatory Logs");
+                XLSX.writeFile(wb, "aiia_ctms_export.xlsx");
+            });
+        }
+
+        function exportPDF() {
+            Promise.all([
+                fetch(API + "/api/trials/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/participants/").then(function(r) { return r.json(); }),
+                fetch(API + "/api/safety/").then(function(r) { return r.json(); })
+            ]).then(function(res) {
+                var trials = res[0], participants = res[1], safety = res[2];
+                var doc = new jspdf.jsPDF();
+                var y = 15;
+                doc.setFontSize(16);
+                doc.text("AIIA CTMS - Trial Data Export", 15, y); y += 8;
+                doc.setFontSize(10);
+                doc.text("Generated: " + new Date().toLocaleString(), 15, y); y += 10;
+
+                doc.setFontSize(12);
+                doc.text("Trials (" + trials.length + ")", 15, y); y += 6;
+                doc.setFontSize(9);
+                trials.forEach(function(t) {
+                    if (y > 270) { doc.addPage(); y = 15; }
+                    var line = t.title + " | Status: " + t.status + " | Enrollment: " + t.enrollment + "/" + t.target_sample_size + " | CTRI: " + (t.ctri_id || "Pending");
+                    doc.text(doc.splitTextToSize(line, 180), 15, y);
+                    y += 8;
+                });
+                y += 6;
+
+                if (y > 260) { doc.addPage(); y = 15; }
+                doc.setFontSize(12);
+                doc.text("Participants (" + participants.length + ")", 15, y); y += 6;
+                doc.setFontSize(9);
+                participants.forEach(function(p) {
+                    if (y > 270) { doc.addPage(); y = 15; }
+                    doc.text(p.participant_code + " | Trial ID: " + p.trial_id + " | Status: " + p.status, 15, y);
+                    y += 6;
+                });
+                y += 6;
+
+                if (y > 260) { doc.addPage(); y = 15; }
+                doc.setFontSize(12);
+                doc.text("Safety Events (" + safety.length + ")", 15, y); y += 6;
+                doc.setFontSize(9);
+                safety.forEach(function(e) {
+                    if (y > 270) { doc.addPage(); y = 15; }
+                    var line = e.description + " | Severity: " + e.severity + " | Causality: " + e.causality;
+                    doc.text(doc.splitTextToSize(line, 180), 15, y);
+                    y += 8;
+                });
+
+                doc.save("aiia_ctms_export.pdf");
+            });
+        }
+
         function exportFHIR() {
             fetch(API + "/api/fhir/export").then(function(r) { return r.json(); }).then(function(data) {
                 var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -939,6 +1061,7 @@
     </script>
 </body>
 </html>
+
 
 
 
